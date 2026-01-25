@@ -1,5 +1,7 @@
 package com.shramikconnect.entity;
 
+import com.shramikconnect.common.enums.District;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,5 +21,11 @@ public class Worker {
     private String skillSet;
     private Integer experienceYears;
     private String location;
+    
     private Double rating;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private District district;
+
 }
