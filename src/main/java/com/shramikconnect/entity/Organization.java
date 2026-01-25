@@ -1,5 +1,7 @@
 package com.shramikconnect.entity;
 
+import com.shramikconnect.common.enums.District;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,4 +21,9 @@ public class Organization {
     private String orgName;
     private String gstNumber;
     private String address;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private District district;
+
 }

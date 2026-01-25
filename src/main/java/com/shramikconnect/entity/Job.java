@@ -2,6 +2,8 @@ package com.shramikconnect.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import com.shramikconnect.common.enums.District;
 import com.shramikconnect.common.enums.JobStatus;
 import java.time.LocalDateTime;
 
@@ -21,6 +23,10 @@ public class Job {
     private String description;
     private String category;
     private String location;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private District district;
+
     private Double budget;
     
 

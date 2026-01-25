@@ -1,5 +1,7 @@
 package com.shramikconnect.entity;
 
+import com.shramikconnect.common.enums.District;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,4 +19,9 @@ public class Client {
     private User user;
 
     private String address;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private District district;
+
 }
