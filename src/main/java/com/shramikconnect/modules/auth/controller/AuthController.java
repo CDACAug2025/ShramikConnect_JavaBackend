@@ -2,6 +2,8 @@ package com.shramikconnect.modules.auth.controller;
 
 import com.shramikconnect.modules.auth.dto.RegisterRequest;
 import com.shramikconnect.modules.auth.dto.RegisterResponse;
+import com.shramikconnect.modules.auth.dto.LoginRequest;
+import com.shramikconnect.modules.auth.dto.LoginResponse;
 import com.shramikconnect.modules.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,5 +22,13 @@ public class AuthController {
             @RequestBody RegisterRequest request) {
 
         return ResponseEntity.ok(authService.register(request));
+    }
+    
+    
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(
+            @RequestBody LoginRequest request) {
+
+        return ResponseEntity.ok(authService.login(request));
     }
 }
