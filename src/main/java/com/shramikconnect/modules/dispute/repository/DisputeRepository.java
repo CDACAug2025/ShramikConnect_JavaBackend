@@ -12,6 +12,8 @@ public interface DisputeRepository extends JpaRepository<Dispute, Integer> {
 	long countByStatus(DisputeStatus status);
 
 	List<Dispute> findTop2ByStatusOrderByDisputeIdAsc(DisputeStatus status);
+	
+	List<Dispute> findByStatus(DisputeStatus status);
 
 
 }
