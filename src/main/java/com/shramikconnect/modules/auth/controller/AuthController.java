@@ -1,7 +1,6 @@
 package com.shramikconnect.modules.auth.controller;
 
-import com.shramikconnect.modules.auth.dto.RegisterRequest;
-import com.shramikconnect.modules.auth.dto.RegisterResponse;
+import com.shramikconnect.modules.auth.dto.*;
 import com.shramikconnect.modules.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +13,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(
