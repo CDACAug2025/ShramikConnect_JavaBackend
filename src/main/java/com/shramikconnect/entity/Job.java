@@ -28,6 +28,7 @@ public class Job {
     private District district;
 
     private Double budget;
+    private String duration;
     
 
     @Enumerated(EnumType.STRING)
