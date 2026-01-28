@@ -1,39 +1,32 @@
 package com.shramikconnect.entity;
 
+import com.shramikconnect.common.enums.JobStatus;
 import jakarta.persistence.*;
 import lombok.*;
-
-import com.shramikconnect.common.enums.District;
-import com.shramikconnect.common.enums.JobStatus;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "jobs")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor 
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Job {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer jobId;
 
-    @ManyToOne
-    private User postedBy;
-
     private String title;
     private String description;
     private String category;
-    private String location;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private District district;
-
     private Double budget;
+    private String location;
+    private String district;
     
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private JobStatus status;
-
-
+    private JobStatus status = JobStatus.OPEN;
+    
+    @Column(name = "posted_by_user_id")
+    private Integer postedByUserId;
+    
     private LocalDateTime createdAt = LocalDateTime.now();
 }
