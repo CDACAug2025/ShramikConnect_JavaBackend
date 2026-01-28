@@ -1,15 +1,14 @@
 package com.shramikconnect.modules.auth.dto;
 
-import lombok.*;
+import com.shramikconnect.common.enums.UserStatus;
 
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor @Builder
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
 public class LoginResponse {
     private String token;
-    private Integer userId;
-    private String fullName;
-    private String email;
     private String role;
-    private String redirectUrl;
-    private String message;
+    private String accountStatus;
 }
