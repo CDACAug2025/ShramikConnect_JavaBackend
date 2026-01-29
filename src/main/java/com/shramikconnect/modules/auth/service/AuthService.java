@@ -29,16 +29,16 @@ public class AuthService {
             throw new RuntimeException("Email already registered");
         }
 
-        // Default role (example: CLIENT)
-        Role role = roleRepository.findById(5)
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+        // ✅ TAKE ROLE FROM REQUEST
+        Role role = roleRepository.findByRoleName(request.getRole())
+                .orElseThrow(() -> new RuntimeException("Invalid role: " + request.getRole()));
 
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
                 // .passwordHash(passwordEncoder.encode(request.getPassword()))
-                .passwordHash(request.getPassword()) // ⚠️ plain text (temporary)
+                .passwordHash(request.getPassword()) // ⚠️ TEMP
                 .role(role)
                 .status(UserStatus.ACTIVE)
                 .build();
@@ -50,6 +50,7 @@ public class AuthService {
                 .message("Registration successful")
                 .build();
     }
+
 
     public LoginResponse login(LoginRequest request) {
 
