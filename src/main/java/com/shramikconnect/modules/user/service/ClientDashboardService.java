@@ -23,38 +23,66 @@ public class ClientDashboardService {
     private final UserRepository userRepository;
 
     public ClientDashboardResponse getDashboardData(String username) {
+
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        Integer userId = user.getUserId();
+
         ClientDashboardResponse response = new ClientDashboardResponse();
-        
-        // Get stats
-        ClientDashboardResponse.DashboardStats stats = new ClientDashboardResponse.DashboardStats();
-        stats.setActiveJobs(clientJobRepository.countByPostedByAndStatus(user, JobStatus.OPEN));
-        stats.setCompletedJobs(clientJobRepository.countByPostedByAndStatus(user, JobStatus.COMPLETED));
-        Double totalSpent = clientJobRepository.sumBudgetByPostedByAndStatus(user, JobStatus.COMPLETED);
+
+        // ---------- STATS ----------
+        ClientDashboardResponse.DashboardStats stats =
+                new ClientDashboardResponse.DashboardStats();
+
+        stats.setActiveJobs(
+                clientJobRepository.countByPostedByUserIdAndStatus(userId, JobStatus.OPEN)
+        );
+
+        stats.setCompletedJobs(
+                clientJobRepository.countByPostedByUserIdAndStatus(userId, JobStatus.COMPLETED)
+        );
+
+        Double totalSpent =
+                clientJobRepository.sumBudgetByPostedByUserIdAndStatus(
+                        userId,
+                        JobStatus.COMPLETED
+                );
+
         stats.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
-        stats.setPendingApplications(jobApplicationRepository.countByJob_PostedByAndStatus(user, ApplicationStatus.APPLIED));
-        
+
+        stats.setPendingApplications(
+        		jobApplicationRepository.countByClientJobsAndStatus(
+        		        user.getUserId(),
+        		        ApplicationStatus.APPLIED
+        		)
+        );
+
         response.setStats(stats);
-        
-        // Get recent jobs
-        List<Job> recentJobsList = clientJobRepository.findTop5ByPostedByOrderByCreatedAtDesc(user);
-        List<ClientDashboardResponse.RecentJobResponse> recentJobs = recentJobsList
-                .stream()
-                .map(job -> {
-                    ClientDashboardResponse.RecentJobResponse jobResponse = new ClientDashboardResponse.RecentJobResponse();
+
+        // ---------- RECENT JOBS ----------
+        List<Job> recentJobsList =
+                clientJobRepository.findTop5ByPostedByUserIdOrderByCreatedAtDesc(userId);
+
+        List<ClientDashboardResponse.RecentJobResponse> recentJobs =
+                recentJobsList.stream().map(job -> {
+
+                    ClientDashboardResponse.RecentJobResponse jobResponse =
+                            new ClientDashboardResponse.RecentJobResponse();
+
                     jobResponse.setJobId(job.getJobId());
                     jobResponse.setTitle(job.getTitle());
-                    jobResponse.setStatus(job.getStatus().toString());
+                    jobResponse.setStatus(job.getStatus().name());
                     jobResponse.setCreatedAt(job.getCreatedAt().toString());
-                    jobResponse.setApplicationCount(jobApplicationRepository.countByJob(job));
+                    jobResponse.setApplicationCount(
+                            jobApplicationRepository.countByJobJobId(job.getJobId())
+                    );
+
                     return jobResponse;
-                })
-                .collect(Collectors.toList());
-        
+                }).collect(Collectors.toList());
+
         response.setRecentJobs(recentJobs);
-        
+
         return response;
     }
 }

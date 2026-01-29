@@ -1,30 +1,28 @@
 package com.shramikconnect.entity;
 
+import com.shramikconnect.common.enums.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
-import com.shramikconnect.common.enums.ApplicationStatus;
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "job_applications")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class JobApplication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer applicationId;
 
-    @ManyToOne
-    private Job job;
+    @Column(name = "applicant_user_id")
+    private Integer applicantUserId;
 
-    @ManyToOne
-    private User applicant;
-
-  
+    @Column(name = "job_job_id")
+    private Integer jobJobId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApplicationStatus status;
 
-    private LocalDateTime appliedAt = LocalDateTime.now();
+    private LocalDateTime appliedAt;
 }

@@ -3,17 +3,16 @@ package com.shramikconnect.modules.auth.service;
 import com.shramikconnect.common.enums.UserStatus;
 import com.shramikconnect.entity.Role;
 import com.shramikconnect.entity.User;
-import com.shramikconnect.modules.auth.dto.RegisterRequest;
-import com.shramikconnect.modules.auth.dto.RegisterResponse;
 import com.shramikconnect.modules.auth.dto.LoginRequest;
 import com.shramikconnect.modules.auth.dto.LoginResponse;
+import com.shramikconnect.modules.auth.dto.RegisterRequest;
+import com.shramikconnect.modules.auth.dto.RegisterResponse;
 import com.shramikconnect.modules.user.repository.RoleRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
-import com.shramikconnect.modules.kyc.repository.KycRepository;
 import com.shramikconnect.security.JwtUtils;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+// import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -21,9 +20,8 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
+    // private final PasswordEncoder passwordEncoder; // 🔒 enable later
     private final JwtUtils jwtUtils;
-    private final KycRepository kycRepository;
 
     public RegisterResponse register(RegisterRequest request) {
 
@@ -31,14 +29,16 @@ public class AuthService {
             throw new RuntimeException("Email already registered");
         }
 
-        Role role = roleRepository.findByRoleName(request.getRole())
-                .orElseThrow(() -> new RuntimeException("Invalid role"));
+        // Default role (example: CLIENT)
+        Role role = roleRepository.findById(5)
+                .orElseThrow(() -> new RuntimeException("Role not found"));
 
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
-                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                // .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .passwordHash(request.getPassword()) // ⚠️ plain text (temporary)
                 .role(role)
                 .status(UserStatus.ACTIVE)
                 .build();
@@ -50,31 +50,28 @@ public class AuthService {
                 .message("Registration successful")
                 .build();
     }
-    
-    
+
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepository.findByEmail(request.getUsername())
+                .or(() -> userRepository.findByPhone(request.getUsername()))
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));
 
-//        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        // ⚠️ Plain-text password check (TEMPORARY)
         if (!request.getPassword().equals(user.getPasswordHash())) {
             throw new RuntimeException("Invalid credentials");
         }
 
-
-        String token = jwtUtils.generateToken(user.getEmail());
-
-        String kycStatus = kycRepository
-                .findTopByUserOrderByKycIdDesc(user)
-                .map(k -> k.getStatus().name())
-                .orElse("PENDING");
+        // 🔐 JWT WITH ROLE (CRITICAL)
+        String roleName = user.getRole().getRoleName(); // SUPERVISOR / CLIENT / ADMIN
+        String token = jwtUtils.generateToken(user.getEmail(), roleName);
 
         return LoginResponse.builder()
                 .token(token)
-                .role(user.getRole().getRoleName())
+                .role(roleName)
+                .userId(user.getUserId())
+                .fullName(user.getFullName())
                 .accountStatus(user.getStatus().name())
                 .build();
-
     }
 }

@@ -1,11 +1,13 @@
 package com.shramikconnect.modules.auth.dto;
 
-import lombok.Getter;
-import lombok.Setter;
 
-@Getter
-@Setter
+import lombok.*;
+
+@Getter @Setter
+@NoArgsConstructor @AllArgsConstructor
 public class LoginRequest {
-    private String username; // email
+
+    private String username;
     private String password;
 }
+

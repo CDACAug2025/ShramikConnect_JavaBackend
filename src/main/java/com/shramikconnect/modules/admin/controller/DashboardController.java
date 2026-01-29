@@ -1,7 +1,7 @@
 package com.shramikconnect.modules.admin.controller;
 
 import com.shramikconnect.modules.admin.dto.DashboardStatsDTO;
-import com.shramikconnect.modules.admin.entity.SystemLog;
+import com.shramikconnect.entity.SystemLog;
 import com.shramikconnect.modules.admin.service.DashboardService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,9 +26,9 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getDashboardStats());
     }
 
-    @GetMapping("/logs")
-    @Operation(summary = "Get System Logs", description = "Fetch the latest 10 system error/warning logs")
-    public ResponseEntity<List<SystemLog>> getLogs() {
-        return ResponseEntity.ok(dashboardService.getSystemLogs());
-    }
+//    @GetMapping("/logs")
+//    @Operation(summary = "Get System Logs", description = "Fetch the latest 10 system error/warning logs")
+//    public ResponseEntity<List<SystemLog>> getLogs() {
+//        return ResponseEntity.ok(dashboardService.getSystemLogs());
+//    }
 }

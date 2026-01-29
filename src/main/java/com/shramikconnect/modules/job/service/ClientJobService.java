@@ -6,7 +6,6 @@ import com.shramikconnect.modules.job.dto.CreateJobRequest;
 import com.shramikconnect.modules.job.dto.JobResponse;
 import com.shramikconnect.modules.job.repository.ClientJobRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
-import com.shramikconnect.common.enums.District;
 import com.shramikconnect.common.enums.JobStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,82 +23,87 @@ public class ClientJobService {
     private final UserRepository userRepository;
 
     public JobResponse createJob(CreateJobRequest request, String username) {
+
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        Job job = new Job();
-        job.setTitle(request.getTitle());
-        job.setCategory(request.getCategory());
-        job.setDescription(request.getDescription());
-        job.setBudget(request.getBudget());
-        job.setDuration(request.getDuration());
-        job.setLocation(request.getLocation());
-        job.setDistrict(District.valueOf(request.getDistrict().toUpperCase()));
-        job.setStatus(JobStatus.OPEN);
-        job.setPostedBy(user);
+        Job job = Job.builder()
+                .title(request.getTitle())
+                .category(request.getCategory())
+                .description(request.getDescription())
+                .budget(request.getBudget())
+                .location(request.getLocation())
+                .district(request.getDistrict())
+                .status(JobStatus.OPEN)
+                .postedByUserId(user.getUserId())
+                .build();
 
-        Job savedJob = clientJobRepository.save(job);
-        return mapToResponse(savedJob);
+        return map(clientJobRepository.save(job));
     }
 
     public List<JobResponse> getJobsByClient(String username) {
+
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Job> jobs = clientJobRepository.findByPostedByOrderByCreatedAtDesc(user);
-        return jobs.stream().map(this::mapToResponse).collect(Collectors.toList());
+        return clientJobRepository
+                .findByPostedByUserIdOrderByCreatedAtDesc(user.getUserId())
+                .stream()
+                .map(this::map)
+                .collect(Collectors.toList());
     }
 
     public void deleteJob(Integer jobId, String username) {
+
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Job job = clientJobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
 
-        if (!job.getPostedBy().equals(user)) {
-            throw new RuntimeException("Unauthorized to delete this job");
+        if (!job.getPostedByUserId().equals(user.getUserId())) {
+            throw new RuntimeException("Unauthorized");
         }
 
         clientJobRepository.delete(job);
     }
 
     public JobResponse updateJob(Integer jobId, CreateJobRequest request, String username) {
+
         User user = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Job job = clientJobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found"));
 
-        if (!job.getPostedBy().equals(user)) {
-            throw new RuntimeException("Unauthorized to update this job");
+        if (!job.getPostedByUserId().equals(user.getUserId())) {
+            throw new RuntimeException("Unauthorized");
         }
 
         job.setTitle(request.getTitle());
         job.setCategory(request.getCategory());
         job.setDescription(request.getDescription());
         job.setBudget(request.getBudget());
-        job.setDuration(request.getDuration());
         job.setLocation(request.getLocation());
-        job.setDistrict(District.valueOf(request.getDistrict().toUpperCase()));
+        job.setDistrict(request.getDistrict());
 
-        Job updatedJob = clientJobRepository.save(job);
-        return mapToResponse(updatedJob);
+        return map(clientJobRepository.save(job));
     }
 
-    private JobResponse mapToResponse(Job job) {
+    private JobResponse map(Job job) {
+
         JobResponse response = new JobResponse();
         response.setJobId(job.getJobId());
         response.setTitle(job.getTitle());
         response.setCategory(job.getCategory());
         response.setDescription(job.getDescription());
         response.setBudget(job.getBudget());
-        response.setDuration(job.getDuration());
         response.setLocation(job.getLocation());
-        response.setDistrict(job.getDistrict().toString());
+        response.setDistrict(job.getDistrict());
         response.setStatus(job.getStatus());
-        response.setPostedBy(job.getPostedBy().getEmail());
+        response.setPostedByUserId(job.getPostedByUserId());
         response.setCreatedAt(job.getCreatedAt());
+
         return response;
     }
 }
