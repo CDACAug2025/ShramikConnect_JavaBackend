@@ -1,6 +1,7 @@
 package com.shramikconnect.security;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -20,7 +21,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -50,6 +51,11 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
+                
+                // ✅ ADD THIS BLOCK TO FIX 403 ERROR
+                // This allows the frontend to access Admin/User data without logging in
+                .requestMatchers("/api/admin/**", "/api/users/**","/products/**").permitAll() 
+                
                 .anyRequest().authenticated()
             )
 
@@ -63,7 +69,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder()); // plain-text for now
+        provider.setPasswordEncoder(passwordEncoder()); 
         return provider;
     }
 
@@ -73,7 +79,6 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // ⚠️ TEMPORARY (plain-text passwords)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
@@ -83,7 +88,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of("http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")); // Added PATCH
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

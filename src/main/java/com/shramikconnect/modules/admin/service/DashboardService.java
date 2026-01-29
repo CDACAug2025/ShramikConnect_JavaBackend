@@ -1,19 +1,24 @@
 package com.shramikconnect.modules.admin.service;
 
-import com.shramikconnect.modules.admin.dto.DashboardStatsDTO;
-import com.shramikconnect.entity.SystemLog;
-import com.shramikconnect.modules.admin.repository.SystemLogRepository;
-import com.shramikconnect.common.enums.UserStatus;
-import com.shramikconnect.entity.User;
-
-import com.shramikconnect.modules.user.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.lang.management.ManagementFactory;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.shramikconnect.common.enums.UserStatus;
+import com.shramikconnect.common.enums.JobStatus; // ✅ Import JobStatus Enum
+import com.shramikconnect.entity.SystemLog;
+import com.shramikconnect.modules.admin.dto.DashboardStatsDTO;
+import com.shramikconnect.modules.admin.repository.SystemLogRepository;
+import com.shramikconnect.modules.user.repository.UserRepository;
+
+// ✅ CORRECT IMPORT for JobRepository
+import com.shramikconnect.modules.job.repository.JobRepository; 
 
 @Service
 public class DashboardService {
@@ -24,19 +29,25 @@ public class DashboardService {
     @Autowired
     private SystemLogRepository logRepository;
 
-    // 1. Aggregation API Logic
+    @Autowired
+    private JobRepository jobRepository;
+
     public DashboardStatsDTO getDashboardStats() {
         DashboardStatsDTO stats = new DashboardStatsDTO();
 
-        // --- REAL DATA (From User Module) ---
+        // --- USER STATS ---
         stats.setTotalUsers(userRepository.count());
         stats.setActiveUsers(userRepository.findByStatus(UserStatus.ACTIVE).size());
 
-        // --- MOCK DATA (Since Job/Payment modules aren't built yet) ---
-        stats.setTotalJobs(450);
-        stats.setOngoingJobs(35);
-        stats.setCompletedJobs(405);
-        stats.setTotalRevenue(540000.00);
+        // --- JOB STATS (Now using Real Enums) ---
+        stats.setTotalJobs(jobRepository.count());
+        
+        // ✅ Use Enum constants, not Strings
+        stats.setOngoingJobs(jobRepository.countByStatus(JobStatus.IN_PROGRESS)); 
+        stats.setCompletedJobs(jobRepository.countByStatus(JobStatus.COMPLETED));
+
+        // --- REVENUE ---
+        stats.setTotalRevenue(0.0);
 
         // --- SYSTEM HEALTH ---
         long uptimeMillis = ManagementFactory.getRuntimeMXBean().getUptime();
@@ -47,22 +58,28 @@ public class DashboardService {
         return stats;
     }
 
-    // 2. Fetch Logs
-//    public List<SystemLog> getSystemLogs() {
-//        return logRepository.findTop10ByOrderByTimestampDesc();
-//    }
-//
-//    // 3. Simulated Scheduled Job (Runs every 10 seconds to generate a log)
-//    // In a real app, this would run nightly to calculate complex stats
-//    @Scheduled(fixedRate = 60000) 
-//    public void performSystemHealthCheck() {
-//        // Simulating a system check
-//        long memoryUsed = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-//        if (memoryUsed > 1000000000) { // If using too much RAM (Fake check)
-//            logRepository.save(new SystemLog("WARNING", "System", "High Memory Usage Detected"));
-//        } else {
-//            // Uncomment below to see logs appearing automatically
-//            // logRepository.save(new SystemLog("INFO", "System", "Health Check Passed"));
-//        }
-//    }
+ // 2. Fetch Logs (Real Implementation with Correct JSON Keys)
+    public List<Map<String, Object>> getSystemLogs() {
+        List<SystemLog> logs = logRepository.findTop10ByOrderByCreatedAtDesc();
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        for (SystemLog log : logs) {
+            Map<String, Object> map = new HashMap<>();
+            
+            // 1. Match Frontend "TIMESTAMP" column
+            map.put("timestamp", log.getCreatedAt().toString()); 
+
+            // 2. Match Frontend "MESSAGE" column (We use 'action' as the message)
+            map.put("message", log.getAction()); 
+
+            // 3. Match Frontend "LEVEL" column (Default to "INFO" since DB doesn't have it yet)
+            map.put("level", "INFO"); 
+
+            // 4. Match Frontend "MODULE" column (Default to "SYSTEM")
+            map.put("module", "ADMIN");
+            
+            result.add(map);
+        }
+        return result;
+    }
 }
