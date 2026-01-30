@@ -1,19 +1,24 @@
 package com.shramikconnect.modules.job.controller;
 
-import com.shramikconnect.common.enums.JobStatus;
-import com.shramikconnect.entity.Job;
-import com.shramikconnect.entity.User;
-import com.shramikconnect.modules.job.dto.JobRequest;
-import com.shramikconnect.modules.job.repository.OrganizationJobRepository;
-import com.shramikconnect.modules.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import com.shramikconnect.common.enums.JobStatus;
+import com.shramikconnect.entity.Job;
+import com.shramikconnect.entity.User;
+import com.shramikconnect.modules.job.dto.JobRequest;
+import com.shramikconnect.modules.job.repository.JobRepository;
+import com.shramikconnect.modules.user.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -21,8 +26,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JobController {
 
-    private final OrganizationJobRepository jobRepository;
+    private final JobRepository jobRepository;
     private final UserRepository userRepository;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @PostMapping
     public ResponseEntity<?> createJob(@RequestBody JobRequest request) {
@@ -78,6 +86,30 @@ public class JobController {
         }
     }
 
+ 
+
+    @GetMapping("/feed")
+    public ResponseEntity<?> getJobFeed(@RequestParam(required = false) String district) {
+        try {
+           
+            StringBuilder sql = new StringBuilder(
+                "SELECT j.*, u.full_name as client_name FROM jobs j " +
+                "JOIN users u ON j.posted_by_user_id = u.user_id " +
+                "WHERE j.status = 'OPEN' "
+            );
+
+            if (district != null && !district.isEmpty()) {
+                sql.append("AND j.district = '").append(district).append("' ");
+            }
+            
+            sql.append("ORDER BY j.created_at DESC");
+
+            List<Map<String, Object>> jobs = jdbcTemplate.queryForList(sql.toString());
+            return ResponseEntity.ok(jobs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to load job feed: " + e.getMessage());
+        }
+    }
     @PutMapping("/{jobId}")
     public ResponseEntity<?> updateJob(@PathVariable Integer jobId, @RequestBody JobRequest request) {
         try {
@@ -87,11 +119,11 @@ public class JobController {
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            Job job = jobRepository.findById(jobId)
+            Job job = jobRepository.findById(jobId.longValue())
                     .orElseThrow(() -> new RuntimeException("Job not found"));
 
             if (!job.getPostedByUserId().equals(user.getUserId())) {
-                return ResponseEntity.badRequest().body("Not authorized to update this job");
+                return ResponseEntity.badRequest().body("Not authorized");
             }
 
             job.setTitle(request.getTitle());
@@ -104,7 +136,7 @@ public class JobController {
             jobRepository.save(job);
             return ResponseEntity.ok(job);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to update job: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Update failed: " + e.getMessage());
         }
     }
 
@@ -117,17 +149,17 @@ public class JobController {
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            Job job = jobRepository.findById(jobId)
+            Job job = jobRepository.findById(jobId.longValue())
                     .orElseThrow(() -> new RuntimeException("Job not found"));
 
             if (!job.getPostedByUserId().equals(user.getUserId())) {
-                return ResponseEntity.badRequest().body("Not authorized to delete this job");
+                return ResponseEntity.badRequest().body("Not authorized");
             }
 
             jobRepository.delete(job);
             return ResponseEntity.ok("Job deleted successfully");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to delete job: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Delete failed: " + e.getMessage());
         }
     }
 }
