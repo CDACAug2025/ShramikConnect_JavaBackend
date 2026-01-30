@@ -1,22 +1,14 @@
 package com.shramikconnect.modules.job.controller;
 
 import java.util.List;
-
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
+import org.springframework.web.bind.annotation.*;
 import com.shramikconnect.common.enums.ApplicationStatus;
-import com.shramikconnect.modules.job.dto.JobApplicationResponse;
 import com.shramikconnect.modules.job.service.JobApplicationService;
-
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -26,12 +18,44 @@ import lombok.RequiredArgsConstructor;
 public class JobApplicationController {
 
     private final JobApplicationService jobApplicationService;
+    
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
-    @GetMapping("/client")
-    public ResponseEntity<List<JobApplicationResponse>> getClientApplications(Authentication authentication) {
-        String username = authentication.getName();
-        List<JobApplicationResponse> applications = jobApplicationService.getApplicationsByClient(username);
-        return ResponseEntity.ok(applications);
+    // ✅ FIXED: Single version of my-status using real-time SQL JOIN
+    @GetMapping("/my-status")
+    public ResponseEntity<?> getMyApplications(Authentication auth) {
+        if (auth == null) {
+            return ResponseEntity.status(401).body("Error: Unauthorized");
+        }
+        try {
+            String email = auth.getName();
+            // Fetch User ID 7 for Shubham Shinde
+            Long userId = jdbcTemplate.queryForObject("SELECT user_id FROM users WHERE email = ?", Long.class, email);
+
+            // ✅ SQL uses 'applicant_user_id' and 'applied_at' from your schema
+            String sql = "SELECT a.application_id, j.title, j.location, j.budget, a.applied_at, a.status " +
+                         "FROM job_applications a " +
+                         "JOIN jobs j ON a.job_job_id = j.job_id " +
+                         "WHERE a.applicant_user_id = ? " +
+                         "ORDER BY a.applied_at DESC";
+
+            List<Map<String, Object>> apps = jdbcTemplate.queryForList(sql, userId);
+            return ResponseEntity.ok(apps);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Backend Database Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/apply/{jobId}")
+    public ResponseEntity<?> applyToJob(@PathVariable Integer jobId, Authentication authentication) {
+        try {
+            String userEmail = authentication.getName();
+            jobApplicationService.applyForJob(jobId, userEmail);
+            return ResponseEntity.ok("Application submitted successfully!");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Application failed: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{applicationId}/status")
@@ -40,42 +64,12 @@ public class JobApplicationController {
             @RequestParam ApplicationStatus status,
             Authentication authentication) {
         try {
-            // ✅ ADD THIS NULL CHECK to prevent the NullPointerException
-            if (authentication == null) {
-                return ResponseEntity.status(401).body("Error: You must be logged in to update application status.");
-            }
-
+            if (authentication == null) return ResponseEntity.status(401).body("Unauthorized");
             String username = authentication.getName();
             jobApplicationService.updateApplicationStatus(applicationId, status, username);
-            return ResponseEntity.ok("Status updated successfully to " + status);
+            return ResponseEntity.ok("Status updated successfully");
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Failed to update status: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Update failed: " + e.getMessage());
         }
-    }
- // Add these to your existing JobApplicationController
-
-    @PostMapping("/apply/{jobId}")
-    public ResponseEntity<?> applyToJob(@PathVariable Integer jobId, Authentication authentication) {
-        try {
-            String userEmail = authentication.getName();
-            // Uses your existing service layer to create the application record
-            // Sets initial status to APPLIED/PENDING
-            jobApplicationService.applyForJob(jobId, userEmail);
-            return ResponseEntity.ok("Application submitted successfully!");
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body("Application failed: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/my-status")
-    public ResponseEntity<?> getWorkerApplications(Authentication authentication) {
-        // ✅ Check if authentication is null before using it
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).body("Error: You must be logged in to view your applications.");
-        }
-        
-        String username = authentication.getName();
-        List<JobApplicationResponse> applications = jobApplicationService.getApplicationsByWorker(username);
-        return ResponseEntity.ok(applications);
     }
 }
