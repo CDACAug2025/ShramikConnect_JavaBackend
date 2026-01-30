@@ -13,10 +13,8 @@ public class KycController {
     private final KycService kycService;
 
     @PostMapping("/submit")
-    public void submitKyc(
-            @RequestParam Integer userId,
-            @RequestBody KycSubmitRequestDto request) {
-
-        kycService.submitKyc(userId, request);
+    public void submitKyc(@RequestBody KycSubmitRequestDto request) {
+        kycService.submitKyc(request);
     }
 }
+

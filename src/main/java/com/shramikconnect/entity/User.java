@@ -1,6 +1,9 @@
 package com.shramikconnect.entity;
 
 import com.shramikconnect.entity.Role;
+
+import com.shramikconnect.common.enums.EmailVStatus;
+import com.shramikconnect.common.enums.KycStatus;
 import com.shramikconnect.common.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -25,11 +28,20 @@ public class User {
     @JoinColumn(name = "role_id")
     private Role role;
 
-    
-
+    // 🔐 ACCOUNT ACCESS
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status;
+
+    // 📧 EMAIL VERIFICATION
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EmailVStatus emailStatus;
+
+    // 🪪 KYC STATUS
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private KycStatus kycStatus;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }

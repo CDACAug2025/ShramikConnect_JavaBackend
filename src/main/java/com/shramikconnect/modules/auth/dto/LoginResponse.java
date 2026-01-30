@@ -18,6 +18,9 @@ public class LoginResponse {
 
     private Integer userId;
     private String fullName;
+    private String emailStatus;
+    private String kycStatus;
+
 
     private String accountStatus;
 }

@@ -3,6 +3,9 @@ package com.shramikconnect.security;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +35,10 @@ public class JwtUtils {
 
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
+    }
+    public static String getCurrentUsername() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth.getName(); // email stored as username
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {

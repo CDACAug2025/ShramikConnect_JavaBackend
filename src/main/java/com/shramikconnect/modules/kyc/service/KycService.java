@@ -9,6 +9,8 @@ import com.shramikconnect.modules.kyc.dto.KycListResponseDto;
 import com.shramikconnect.modules.kyc.dto.KycSubmitRequestDto;
 import com.shramikconnect.modules.kyc.repository.KycRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
+import com.shramikconnect.security.JwtUtils;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,21 +23,16 @@ public class KycService {
 
     private final KycRepository kycRepository;
     private final UserRepository userRepository;
-
-    public List<KycListResponseDto> getPendingKycs() {
-        return kycRepository.findByStatusOrderByKycIdAsc(KycStatus.PENDING)
-                .stream()
-                .map(this::mapToDto)
-                .toList();
-    }
     
-    public void submitKyc(Integer userId, KycSubmitRequestDto request) {
 
-        User user = userRepository.findById(userId)
+    public void submitKyc(KycSubmitRequestDto request) {
+
+        String email = JwtUtils.getCurrentUsername();
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        boolean exists = kycRepository.existsByUserAndStatus(user, KycStatus.PENDING);
-        if (exists) {
+        if (user.getKycStatus() != KycStatus.NOT_SUBMITTED) {
             throw new RuntimeException("KYC already submitted");
         }
 
@@ -47,34 +44,42 @@ public class KycService {
                 .build();
 
         kycRepository.save(kyc);
-    }
-    
 
-    public void decideKyc(Integer kycId, Integer supervisorUserId, KycDecisionRequestDto request) {
-
-        KycDocument kyc = kycRepository.findById(kycId)
-                .orElseThrow(() -> new RuntimeException("KYC not found"));
-
-        User supervisor = userRepository.findById(supervisorUserId)
-                .orElseThrow(() -> new RuntimeException("Supervisor not found"));
-
-        KycStatus decision = KycStatus.valueOf(request.getDecision());
-
-        // Update KYC
-        kyc.setStatus(decision);
-        kyc.setVerifiedBy(supervisor);
-        kyc.setVerifiedAt(LocalDateTime.now());
-
-        // 🔥 IMPORTANT PART
-        if (decision == KycStatus.APPROVED) {
-            User user = kyc.getUser();
-            user.setStatus(UserStatus.ACTIVE);
-            userRepository.save(user);
-        }
-
-        kycRepository.save(kyc);
+        // 🔐 Update user KYC status
+        user.setKycStatus(KycStatus.PENDING);
+        userRepository.save(user);
     }
 
+
+	public void decideKyc(Integer kycId, Integer supervisorUserId, KycDecisionRequestDto request) {
+	
+	    KycDocument kyc = kycRepository.findById(kycId)
+	            .orElseThrow(() -> new RuntimeException("KYC not found"));
+	
+	    User supervisor = userRepository.findById(supervisorUserId)
+	            .orElseThrow(() -> new RuntimeException("Supervisor not found"));
+	
+	    KycStatus decision = KycStatus.valueOf(request.getDecision());
+	
+	    // Update KYC record
+	    kyc.setStatus(decision);
+	    kyc.setVerifiedBy(supervisor);
+	    kyc.setVerifiedAt(LocalDateTime.now());
+	    kycRepository.save(kyc);
+	
+	    // Update USER KYC STATUS ONLY
+	    User user = kyc.getUser();
+	    user.setKycStatus(decision);
+	    userRepository.save(user);
+	}
+
+
+    public List<KycListResponseDto> getPendingKycs() {
+        return kycRepository.findByStatusOrderByKycIdAsc(KycStatus.PENDING)
+                .stream()
+                .map(this::mapToDto)
+                .toList();
+    }
 
     private KycListResponseDto mapToDto(KycDocument kyc) {
         return KycListResponseDto.builder()
@@ -87,3 +92,4 @@ public class KycService {
                 .build();
     }
 }
+
