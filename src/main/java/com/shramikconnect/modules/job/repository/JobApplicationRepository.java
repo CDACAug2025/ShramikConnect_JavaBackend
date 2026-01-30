@@ -13,6 +13,9 @@ import java.util.List;
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Integer> {
 
     List<JobApplication> findByJobJobIdIn(List<Integer> jobIds);
+    
+    // ✅ ADDED: Find all applications by a specific worker for status tracking
+    List<JobApplication> findByApplicantUserId(Integer applicantUserId);
 
     long countByJobJobId(Integer jobId);
 

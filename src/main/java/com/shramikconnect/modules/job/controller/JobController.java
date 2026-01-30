@@ -1,19 +1,30 @@
 package com.shramikconnect.modules.job.controller;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.shramikconnect.common.enums.JobStatus;
 import com.shramikconnect.entity.Job;
 import com.shramikconnect.entity.User;
 import com.shramikconnect.modules.job.dto.JobRequest;
-import com.shramikconnect.modules.job.repository.OrganizationJobRepository;
+import com.shramikconnect.modules.job.repository.JobRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/jobs")
@@ -21,7 +32,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class JobController {
 
-    private final OrganizationJobRepository jobRepository;
+	private final JobRepository jobRepository; // ✅ Change type to JobRepository
     private final UserRepository userRepository;
 
     @PostMapping
@@ -128,6 +139,24 @@ public class JobController {
             return ResponseEntity.ok("Job deleted successfully");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Failed to delete job: " + e.getMessage());
+        }
+    }
+ // Add these to your existing JobController in com.shramikconnect.modules.job.controller
+
+    @GetMapping("/feed")
+    public ResponseEntity<?> getJobFeed(@RequestParam String district, @RequestParam(required = false) String category) {
+        try {
+            // Fetches open jobs matching the worker's district
+            // This ensures workers find nearby jobs as per your database schema
+            List<Job> jobs;
+            if (category != null && !category.isEmpty()) {
+                jobs = jobRepository.findByDistrictAndCategoryAndStatus(district, category, JobStatus.OPEN);
+            } else {
+                jobs = jobRepository.findByDistrictAndStatus(district, JobStatus.OPEN);
+            }
+            return ResponseEntity.ok(jobs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to load job feed: " + e.getMessage());
         }
     }
 }

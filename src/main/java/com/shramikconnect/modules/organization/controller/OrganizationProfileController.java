@@ -1,14 +1,22 @@
 package com.shramikconnect.modules.organization.controller;
 
-import com.shramikconnect.entity.Organization;
-import com.shramikconnect.entity.User;
-import com.shramikconnect.modules.organization.repository.OrganizationRepository;
-import com.shramikconnect.modules.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.shramikconnect.entity.Organization;
+import com.shramikconnect.entity.User;
+
+import com.shramikconnect.modules.organization.repository.OrganizationRepository;
+import com.shramikconnect.modules.user.repository.UserRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/organization/profile")
@@ -16,7 +24,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class OrganizationProfileController {
 
-    private final OrganizationRepository organizationRepository;
+    // ✅ UPDATED FIELD TYPE TO MATCH RENAMED REPOSITORY
+    private final OrganizationRepository organizationRepository; 
     private final UserRepository userRepository;
 
     @GetMapping
@@ -28,6 +37,7 @@ public class OrganizationProfileController {
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             
+            // ✅ CORRESPONDS TO THE RENAMED REPOSITORY INTERFACE
             Organization org = organizationRepository.findByUserId(user.getUserId())
                     .orElseThrow(() -> new RuntimeException("Organization not found"));
             
@@ -49,6 +59,7 @@ public class OrganizationProfileController {
             Organization org = organizationRepository.findByUserId(user.getUserId())
                     .orElseThrow(() -> new RuntimeException("Organization not found"));
             
+            // ✅ UPDATING FIELDS IN THE ORGANIZATION TABLE
             org.setOrgName(orgData.getOrgName());
             org.setGstNumber(orgData.getGstNumber());
             org.setAddress(orgData.getAddress());
