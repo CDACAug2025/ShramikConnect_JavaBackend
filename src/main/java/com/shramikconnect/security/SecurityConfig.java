@@ -30,19 +30,26 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final UserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            .csrf(csrf -> csrf.disable()) // Disable CSRF for stateless APIs
-            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Apply updated CORS policy
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            
+            // 🔒 Stateless API
+            .csrf(csrf -> csrf.disable())
+            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .formLogin(form -> form.disable())
+            .httpBasic(basic -> basic.disable())
+
+            // 🔐 Authorization
             .authorizeHttpRequests(auth -> auth
-                // 1. Public Endpoints
+
+                // Public
                 .requestMatchers(
                     "/api/auth/**",
                     "/v3/api-docs/**",
@@ -51,37 +58,33 @@ public class SecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
-                
 
-                // ✅ ADD THIS BLOCK TO FIX 403 ERROR
-                // This allows the frontend to access Admin/User data without logging in
-//                .requestMatchers("/api/admin/**", "/api/users/**","/products/**").permitAll() 
-
-                // 2. Allow Pre-flight OPTIONS requests for CORS
+                // Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 3. Worker Protected Paths (Profile, Feed, Applications)
-                // hasAnyAuthority matches the role strings exactly as they come from your DB/JWT
-                .requestMatchers("/api/worker/**").hasAnyAuthority("WORKER", "ROLE_WORKER")
-                .requestMatchers("/api/jobs/feed/**").hasAnyAuthority("WORKER", "ROLE_WORKER")
-                .requestMatchers("/api/applications/apply/**").hasAnyAuthority("WORKER", "ROLE_WORKER")
-                .requestMatchers("/api/applications/my-status").hasAnyAuthority("WORKER", "ROLE_WORKER")
-                
-                // 4. Admin/Organization Protected Paths
-                .requestMatchers("/api/admin/**").hasAnyAuthority("ADMIN", "ROLE_ADMIN")
-                .requestMatchers("/api/organization/**").hasAnyAuthority("ORGANIZATION", "ROLE_ORGANIZATION")
-                
-                // 5. Shared Authenticated features
+                // Worker
+                .requestMatchers("/api/worker/**").hasRole("WORKER")
+                .requestMatchers("/api/jobs/feed/**").hasRole("WORKER")
+                .requestMatchers("/api/applications/apply/**").hasRole("WORKER")
+                .requestMatchers("/api/applications/my-status").hasRole("WORKER")
+
+                // Admin / Org / Supervisor
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/organization/**").hasRole("ORGANIZATION")
+                .requestMatchers("/api/supervisor/**").hasRole("SUPERVISOR")
+
+                // Shared
                 .requestMatchers("/api/jobs/**").authenticated()
                 .requestMatchers("/api/applications/**").authenticated()
+                .requestMatchers("/api/contracts/**").authenticated()
+                .requestMatchers("/api/chat/**").authenticated()
 
-                
                 .anyRequest().authenticated()
             )
 
+            // JWT
             .authenticationProvider(authenticationProvider())
-            // JWT Filter must run before the default authentication filter to catch the Bearer token
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -90,32 +93,39 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder()); 
+        provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
+    // ⚠️ TEMP ONLY — replace with BCrypt later
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance(); // CDAC Mumbai development preference
+        return NoOpPasswordEncoder.getInstance();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-		config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000")); 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")); // Added PATCH
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:3000"
+        ));
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+        ));
         config.setAllowedHeaders(List.of("*"));
-
         config.setAllowCredentials(true);
-        config.setMaxAge(3600L); 
+        config.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }

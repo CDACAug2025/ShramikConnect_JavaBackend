@@ -89,4 +89,6 @@ public class JobApplicationService {
         response.setAppliedAt(application.getAppliedAt());
         return response;
     }
+
 }
+
