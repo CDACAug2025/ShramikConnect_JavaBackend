@@ -1,3 +1,4 @@
+
 package com.shramikconnect.modules.contract.dto;
 
 import com.shramikconnect.common.enums.ContractStatus;
@@ -21,3 +22,4 @@ public class ContractResponse {
     private ContractStatus status;
     private String contractTerms;
 }
+
