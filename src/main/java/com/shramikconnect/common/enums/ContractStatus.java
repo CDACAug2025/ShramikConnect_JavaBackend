@@ -1,9 +1,10 @@
 package com.shramikconnect.common.enums;
 
 public enum ContractStatus {
-    DRAFT,
+    NEGOTIATION,
     SIGNED,
     ACTIVE,
     COMPLETED,
     CANCELLED
 }
+

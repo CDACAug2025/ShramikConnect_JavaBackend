@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "chat_rooms")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor 
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ChatRoom {
 
     @Id
@@ -15,7 +15,9 @@ public class ChatRoom {
     private Integer chatRoomId;
 
     @OneToOne
+    @JoinColumn(name = "contract_id", nullable = false)
     private Contract contract;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 }
+

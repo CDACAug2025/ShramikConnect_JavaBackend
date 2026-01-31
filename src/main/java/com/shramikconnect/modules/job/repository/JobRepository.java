@@ -5,6 +5,7 @@ import com.shramikconnect.entity.Job;
 import com.shramikconnect.common.enums.JobStatus; // ✅ Import the Enum
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -22,5 +23,6 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     // For Filtered Feed: Find jobs by district and category
     List<Job> findByDistrictAndCategoryAndStatus(String district, String category, JobStatus status);
+	Optional<Job> findById(Integer jobId);
 
 }

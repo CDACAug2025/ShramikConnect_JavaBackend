@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "contracts")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Contract {
 
     @Id
@@ -31,6 +31,13 @@ public class Contract {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ContractStatus status;
+    
+    public boolean isParticipant(User user) {
+        return user != null &&
+               (user.getUserId().equals(client.getUserId()) ||
+                user.getUserId().equals(worker.getUserId()));
+    }
+
 
 
     private LocalDate startDate;

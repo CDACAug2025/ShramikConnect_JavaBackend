@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "chat_messages")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ChatMessage {
 
     @Id
@@ -15,12 +15,18 @@ public class ChatMessage {
     private Integer messageId;
 
     @ManyToOne
+    @JoinColumn(name = "chat_room_id")
     private ChatRoom chatRoom;
 
     @ManyToOne
+    @JoinColumn(name = "sender_id")
     private User sender;
 
-    private Boolean isAiResponse;
-    private String messageText;
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
     private LocalDateTime sentAt = LocalDateTime.now();
+
+    private boolean systemMessage; // supervisor/system notes
 }
+
