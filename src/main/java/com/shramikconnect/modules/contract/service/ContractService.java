@@ -28,7 +28,7 @@ public class ContractService {
 
     public Contract createContract(CreateContractRequest request, Integer clientId) {
 
-        Job job = jobRepository.findById(request.getJobId())
+        Job job = jobRepository.findById(request.getJobId().longValue())
                 .orElseThrow(() -> new RuntimeException("Job not found"));
 
         User client = userRepository.findById(clientId)

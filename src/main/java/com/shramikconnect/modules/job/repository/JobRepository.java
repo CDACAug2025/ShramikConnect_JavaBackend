@@ -23,6 +23,6 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
     // For Filtered Feed: Find jobs by district and category
     List<Job> findByDistrictAndCategoryAndStatus(String district, String category, JobStatus status);
-	Optional<Job> findById(Integer jobId);
+//	Optional<Job> findById(Integer jobId);
 
 }
