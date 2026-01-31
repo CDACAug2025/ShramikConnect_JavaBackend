@@ -5,7 +5,10 @@ import com.shramikconnect.modules.contract.dto.ContractUpdateRequest;
 import com.shramikconnect.modules.contract.service.ContractService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -13,6 +16,12 @@ import org.springframework.web.bind.annotation.*;
 public class ContractController {
 
     private final ContractService contractService;
+
+    @GetMapping
+    public List<ContractResponse> getClientContracts(Authentication authentication) {
+        String username = authentication.getName();
+        return contractService.getClientContracts(username);
+    }
 
     @GetMapping("/job/{jobId}")
     public ContractResponse getContract(@PathVariable Integer jobId) {

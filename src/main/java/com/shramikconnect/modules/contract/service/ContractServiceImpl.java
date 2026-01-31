@@ -8,12 +8,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ContractServiceImpl implements ContractService {
 
     private final ClientContractRepository contractRepository;
+
+    @Override
+    public List<ContractResponse> getClientContracts(String username) {
+        List<Contract> contracts = contractRepository.findByClient_Username(username);
+        return contracts.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 
     @Override
     public ContractResponse getByJobId(Integer jobId) {
