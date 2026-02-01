@@ -1,7 +1,7 @@
 package com.shramikconnect.security;
 
 import java.util.List;
-
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,8 +22,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import lombok.RequiredArgsConstructor;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -35,54 +33,51 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
-            // 🔒 Stateless API
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
-
-            // 🔐 Authorization
             .authorizeHttpRequests(auth -> auth
-
-                // Public
-                .requestMatchers(
-                    "/api/auth/**",
-                    "/v3/api-docs/**",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/swagger-resources/**",
-                    "/webjars/**"
-                ).permitAll()
-
-                // Preflight
+                // 🌐 1. Public Endpoints
+                .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers("/api/payments/**").permitAll() 
 
-                // Worker
-                .requestMatchers("/api/worker/**").hasRole("WORKER")
-                .requestMatchers("/api/jobs/feed/**").hasRole("WORKER")
-                .requestMatchers("/api/applications/apply/**").hasRole("WORKER")
-                .requestMatchers("/api/applications/my-status").hasRole("WORKER")
+                // 🛡️ 2. Shared Multi-Role Endpoints
+                // Allow both ADMIN and ORGANIZATION to verify Razorpay payments
+                .requestMatchers("/api/organization/payments/verify-and-update/**").hasAnyRole("ORGANIZATION", "ADMIN")
 
-                // Admin / Org / Supervisor
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // 🏢 3. Role-Specific Endpoints
+                
+                // 👷 WORKER Role (Updated to include payment history)
+                .requestMatchers(
+                    "/api/worker/**", 
+                    "/api/jobs/feed/**", 
+                    "/api/applications/apply/**",
+                    "/api/worker/payments/**" 
+                ).hasRole("WORKER")
+
+                // 🏢 ORGANIZATION Role
                 .requestMatchers("/api/organization/**").hasRole("ORGANIZATION")
+                
+                // 👮 ADMIN Role
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                
+                // 👮 SUPERVISOR Role
                 .requestMatchers("/api/supervisor/**").hasRole("SUPERVISOR")
+                
+                .requestMatchers("/api/notifications/**").authenticated()
+                
+             // Inside your SecurityConfig filter chain
+                .requestMatchers("/api/notifications/**").hasAnyRole("WORKER", "CLIENT", "ORGANIZATION", "ADMIN")
 
-                // Shared
-                .requestMatchers("/api/jobs/**").authenticated()
-                .requestMatchers("/api/applications/**").authenticated()
-                .requestMatchers("/api/contracts/**").authenticated()
-                .requestMatchers("/api/chat/**").authenticated()
+                // 🔑 4. Shared Authenticated (Login required, role doesn't matter)
+                .requestMatchers("/api/jobs/**", "/api/applications/**", "/api/contracts/**", "/api/chat/**").authenticated()
 
                 .anyRequest().authenticated()
             )
-
-            // JWT
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -98,34 +93,27 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
-    // ⚠️ TEMP ONLY — replace with BCrypt later
     @Bean
     public PasswordEncoder passwordEncoder() {
+        // Note: Using NoOp for development; use BCrypt for production
         return NoOpPasswordEncoder.getInstance();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowedOrigins(List.of(
-                "http://localhost:5173",
-                "http://localhost:3000"
-        ));
-        config.setAllowedMethods(List.of(
-                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
-        ));
+        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
         config.setMaxAge(3600L);
+        config.setExposedHeaders(List.of("Authorization", "x-rtb-fingerprint-id"));
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }

@@ -18,9 +18,7 @@ import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 import org.springframework.stereotype.Service;
-// import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Service
 @RequiredArgsConstructor
@@ -30,11 +28,9 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final EmailVerificationTokenRepository tokenRepository;
     private final EmailService emailService;
-    // private final PasswordEncoder passwordEncoder; // 🔒 enable later
     private final JwtUtils jwtUtils;
 
     public RegisterResponse register(RegisterRequest request) {
-
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
         }
@@ -46,7 +42,7 @@ public class AuthService {
                 .fullName(request.getFullName())
                 .email(request.getEmail())
                 .phone(request.getPhone())
-                .passwordHash(request.getPassword()) // TEMP
+                .passwordHash(request.getPassword()) 
                 .role(role)
                 .status(UserStatus.ACTIVE)
                 .emailStatus(EmailVStatus.NOT_VERIFIED)
@@ -55,11 +51,8 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 🔐 Generate verification token
         String token = UUID.randomUUID().toString();
-
-        EmailVerificationToken verificationToken =
-                EmailVerificationToken.builder()
+        EmailVerificationToken verificationToken = EmailVerificationToken.builder()
                         .token(token)
                         .user(user)
                         .expiryTime(LocalDateTime.now().plusHours(24))
@@ -76,11 +69,7 @@ public class AuthService {
                 .build();
     }
 
-
-
-
     public LoginResponse login(LoginRequest request) {
-
         User user = userRepository.findByEmail(request.getUsername())
                 .or(() -> userRepository.findByPhone(request.getUsername()))
                 .orElseThrow(() -> new RuntimeException("Invalid credentials"));
@@ -89,9 +78,11 @@ public class AuthService {
             throw new RuntimeException("Invalid credentials");
         }
 
-        if (user.getEmailStatus() != EmailVStatus.VERIFIED) {
+        // ✅ Bypass email verification for development
+        /* if (user.getEmailStatus() != EmailVStatus.VERIFIED) {
             throw new RuntimeException("Please verify your email");
         }
+        */
 
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new RuntimeException("Account blocked");
@@ -110,5 +101,4 @@ public class AuthService {
                 .kycStatus(user.getKycStatus().name())
                 .build();
     }
-
 }

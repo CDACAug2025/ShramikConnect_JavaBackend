@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 @Table(name = "escrow_payments")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor 
 public class EscrowPayment {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer escrowId;
@@ -20,6 +19,9 @@ public class EscrowPayment {
 
     private Double amount;
 
+    // Bridge between your DB and Razorpay
+    @Column(unique = true)
+    private String razorpayOrderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
