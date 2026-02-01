@@ -9,3 +9,4 @@ public class CreateContractRequest {
     private Double agreedAmount;
 }
 
+

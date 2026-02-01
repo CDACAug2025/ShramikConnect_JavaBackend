@@ -23,4 +23,22 @@ public class EmailService {
         );
         mailSender.send(mail);
     }
+    
+    
+    public void sendPasswordResetEmail(String to, String link) {
+
+        SimpleMailMessage mail = new SimpleMailMessage();
+        mail.setTo(to);
+        mail.setSubject("Reset your password - ShramikConnect");
+        mail.setText(
+                "You requested a password reset.\n\n" +
+                "Click the link below to reset your password:\n" +
+                link + "\n\n" +
+                "This link expires in 30 minutes.\n" +
+                "If you didn’t request this, ignore this email."
+        );
+
+        mailSender.send(mail);
+    }
+
 }

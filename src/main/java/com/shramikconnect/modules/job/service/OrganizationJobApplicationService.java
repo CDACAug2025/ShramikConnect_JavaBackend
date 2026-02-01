@@ -74,12 +74,31 @@ public class OrganizationJobApplicationService {
         OrganizationJobApplicationResponse response =
                 new OrganizationJobApplicationResponse();
 
+        // 🔍 Fetch Job
+        Job job = clientJobRepository.findById(application.getJobJobId())
+                .orElseThrow(() -> new RuntimeException("Job not found"));
+
+        // 🔍 Fetch Worker
+        User worker = userRepository.findById(application.getApplicantUserId())
+                .orElseThrow(() -> new RuntimeException("Worker not found"));
+
         response.setApplicationId(application.getApplicationId());
-        response.setJobId(application.getJobJobId());
-        response.setApplicantUserId(application.getApplicantUserId());
+
+        // Job info
+        response.setJobId(job.getJobId());
+        response.setJobTitle(job.getTitle());
+
+        // Worker info
+        response.setWorkerId(worker.getUserId());
+        response.setWorkerName(worker.getFullName());
+        response.setWorkerEmail(worker.getEmail());
+
+        // Application info
         response.setStatus(application.getStatus());
         response.setAppliedAt(application.getAppliedAt());
 
         return response;
     }
+
+
 }

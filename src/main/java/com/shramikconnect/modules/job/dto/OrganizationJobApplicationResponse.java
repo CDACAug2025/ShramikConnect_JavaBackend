@@ -9,8 +9,17 @@ import java.time.LocalDateTime;
 public class OrganizationJobApplicationResponse {
 
     private Integer applicationId;
+
+    // JOB
     private Integer jobId;
-    private Integer applicantUserId;
+    private String jobTitle;
+
+    // WORKER
+    private Integer workerId;
+    private String workerName;
+    private String workerEmail;
+
+    // APPLICATION
     private ApplicationStatus status;
     private LocalDateTime appliedAt;
 }
