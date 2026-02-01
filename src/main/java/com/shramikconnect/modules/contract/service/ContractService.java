@@ -102,31 +102,37 @@ public class ContractService {
         boolean isWorker = contract.getWorker().getUserId().equals(user.getUserId());
 
         if (!isOrg && !isWorker) {
-            throw new RuntimeException("Unauthorized");
+            throw new AccessDeniedException("Unauthorized");
         }
 
-        // 🔐 SIMPLE RULES
         if (contract.getStatus() == ContractStatus.NEGOTIATION
-                && newStatus == ContractStatus.ACTIVE) {
-
-            contract.setStatus(ContractStatus.ACTIVE);
-            contract.setStartDate(LocalDate.now());
-        }
-
-        else if (contract.getStatus() == ContractStatus.ACTIVE
                 && newStatus == ContractStatus.SIGNED) {
 
             contract.setStatus(ContractStatus.SIGNED);
             contract.setSignedAt(LocalDateTime.now());
         }
 
+        else if (contract.getStatus() == ContractStatus.SIGNED
+                && newStatus == ContractStatus.ACTIVE
+                && isOrg) {
+
+            contract.setStatus(ContractStatus.ACTIVE);
+            contract.setStartDate(LocalDate.now());
+        }
+
+        else if (contract.getStatus() == ContractStatus.ACTIVE
+                && newStatus == ContractStatus.COMPLETED) {
+
+            contract.setStatus(ContractStatus.COMPLETED);
+        }
+
         else {
             throw new RuntimeException("Invalid status transition");
         }
 
-        Contract saved = contractRepository.save(contract);
-        return mapToResponse(saved);
+        return mapToResponse(contractRepository.save(contract));
     }
+
 
 
     private ContractResponse mapToResponse(Contract contract) {
