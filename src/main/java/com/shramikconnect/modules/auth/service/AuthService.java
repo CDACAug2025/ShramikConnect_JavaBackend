@@ -3,14 +3,19 @@ package com.shramikconnect.modules.auth.service;
 import com.shramikconnect.common.enums.EmailVStatus;
 import com.shramikconnect.common.enums.KycStatus;
 import com.shramikconnect.common.enums.UserStatus;
+import com.shramikconnect.common.util.EmailValidator;
+import com.shramikconnect.common.util.PasswordValidator;
 import com.shramikconnect.entity.EmailVerificationToken;
+import com.shramikconnect.entity.PasswordResetToken;
 import com.shramikconnect.entity.Role;
 import com.shramikconnect.entity.User;
 import com.shramikconnect.modules.auth.dto.LoginRequest;
 import com.shramikconnect.modules.auth.dto.LoginResponse;
 import com.shramikconnect.modules.auth.dto.RegisterRequest;
 import com.shramikconnect.modules.auth.dto.RegisterResponse;
+import com.shramikconnect.modules.auth.dto.ResetPasswordRequest;
 import com.shramikconnect.modules.auth.repository.EmailVerificationTokenRepository;
+import com.shramikconnect.modules.auth.repository.PasswordResetTokenRepository;
 import com.shramikconnect.modules.user.repository.RoleRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
 import com.shramikconnect.security.JwtUtils;
@@ -30,13 +35,32 @@ public class AuthService {
     private final RoleRepository roleRepository;
     private final EmailVerificationTokenRepository tokenRepository;
     private final EmailService emailService;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+   
     // private final PasswordEncoder passwordEncoder; // 🔒 enable later
     private final JwtUtils jwtUtils;
 
     public RegisterResponse register(RegisterRequest request) {
 
+        // ✅ EMAIL FORMAT
+        if (!EmailValidator.isValid(request.getEmail())) {
+            throw new RuntimeException("Invalid email address");
+        }
+
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already registered");
+        }
+
+        // ✅ PASSWORD MATCH
+        if (!request.getPassword().equals(request.getConfirmPassword())) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        // ✅ PASSWORD STRENGTH
+        if (!PasswordValidator.isValid(request.getPassword())) {
+            throw new RuntimeException(
+                    "Password must contain at least 1 uppercase letter, 1 number, 1 special character and be 8 characters long"
+            );
         }
 
         Role role = roleRepository.findByRoleName(request.getRole())
@@ -55,7 +79,7 @@ public class AuthService {
 
         userRepository.save(user);
 
-        // 🔐 Generate verification token
+        // 🔐 Email verification token
         String token = UUID.randomUUID().toString();
 
         EmailVerificationToken verificationToken =
@@ -67,7 +91,9 @@ public class AuthService {
 
         tokenRepository.save(verificationToken);
 
-        String verifyLink = "http://localhost:8080/api/auth/verify-email?token=" + token;
+        String verifyLink =
+                "http://localhost:8080/api/auth/verify-email?token=" + token;
+
         emailService.sendVerificationEmail(user.getEmail(), verifyLink);
 
         return RegisterResponse.builder()
@@ -98,6 +124,9 @@ public class AuthService {
         }
 
         String roleName = user.getRole().getRoleName();
+        if (roleName.startsWith("ROLE_")) {
+            roleName = roleName.substring(5);
+        }
         String token = jwtUtils.generateToken(user.getEmail(), roleName);
 
         return LoginResponse.builder()
@@ -110,5 +139,58 @@ public class AuthService {
                 .kycStatus(user.getKycStatus().name())
                 .build();
     }
+    
+    
+    
+    
+    public void forgotPassword(String email) {
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email not registered"));
+
+        String token = UUID.randomUUID().toString();
+
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .token(token)
+                .user(user)
+                .expiryTime(LocalDateTime.now().plusMinutes(30))
+                .build();
+
+        passwordResetTokenRepository.save(resetToken);
+
+        String resetLink =
+                "http://localhost:5173/reset-password?token=" + token;
+
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+    }
+
+
+    public void resetPassword(String token, String newPassword, String confirmPassword) {
+
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("Passwords do not match");
+        }
+
+        if (!PasswordValidator.isValid(newPassword)) {
+            throw new RuntimeException(
+                    "Password must contain at least 1 uppercase letter, 1 number, 1 special character and be 8 characters long"
+            );
+        }
+
+        PasswordResetToken resetToken =
+                passwordResetTokenRepository.findByToken(token)
+                        .orElseThrow(() -> new RuntimeException("Invalid token"));
+
+        if (resetToken.getExpiryTime().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token expired");
+        }
+
+        User user = resetToken.getUser();
+        user.setPasswordHash(newPassword); // TEMP (BCrypt later)
+        userRepository.save(user);
+
+        passwordResetTokenRepository.delete(resetToken);
+    }
+
 
 }

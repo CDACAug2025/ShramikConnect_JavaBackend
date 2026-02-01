@@ -3,10 +3,12 @@ package com.shramikconnect.modules.auth.controller;
 import com.shramikconnect.common.enums.EmailVStatus;
 import com.shramikconnect.entity.EmailVerificationToken;
 import com.shramikconnect.entity.User;
+import com.shramikconnect.modules.auth.dto.ForgotPasswordRequest;
 import com.shramikconnect.modules.auth.dto.LoginRequest;
 import com.shramikconnect.modules.auth.dto.LoginResponse;
 import com.shramikconnect.modules.auth.dto.RegisterRequest;
 import com.shramikconnect.modules.auth.dto.RegisterResponse;
+import com.shramikconnect.modules.auth.dto.ResetPasswordRequest;
 import com.shramikconnect.modules.auth.repository.EmailVerificationTokenRepository;
 import com.shramikconnect.modules.auth.service.AuthService;
 import com.shramikconnect.modules.user.repository.UserRepository;
@@ -27,6 +29,7 @@ public class AuthController {
     private final AuthService authService;
     private final UserRepository userRepository;
     private final EmailVerificationTokenRepository tokenRepository;
+//    private final ResetPasswordRequest resetPasswordRequest;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(
@@ -62,6 +65,32 @@ public class AuthController {
 
         return ResponseEntity.ok("Email verified successfully");
     }
+    
+    
+    
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(
+            @RequestBody ForgotPasswordRequest request) {
+
+        authService.forgotPassword(request.getEmail());
+        return ResponseEntity.ok("Password reset link sent");
+    }
+
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(
+            @RequestBody ResetPasswordRequest request) {
+
+        authService.resetPassword(
+                request.getToken(),
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
+
+        return ResponseEntity.ok("Password reset successful");
+    }
+
+
 
 
 }

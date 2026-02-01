@@ -29,8 +29,9 @@ public class Contract {
 
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private ContractStatus status;
+
     
     public boolean isParticipant(User user) {
         return user != null &&

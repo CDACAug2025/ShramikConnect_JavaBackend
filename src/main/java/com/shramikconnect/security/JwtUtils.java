@@ -19,12 +19,16 @@ public class JwtUtils {
     private static final String SECRET =
             "5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437";
 
+    private static final long EXPIRATION =
+            1000 * 60 * 60 * 10; // 10 hours
+
+    // ✅ STORE PLAIN ROLE
     public String generateToken(String username, String role) {
         return Jwts.builder()
                 .setSubject(username)
-                .claim("role", role) // ✅ ROLE INCLUDED
+                .claim("role", role) // 🔥 NO ROLE_ HERE
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
+                .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -36,9 +40,12 @@ public class JwtUtils {
     public String extractRole(String token) {
         return extractAllClaims(token).get("role", String.class);
     }
+    
+ // 🔐 Utility (used in services/controllers)
     public static String getCurrentUsername() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        return auth.getName(); // email stored as username
+        Authentication auth =
+                SecurityContextHolder.getContext().getAuthentication();
+        return auth.getName(); // email
     }
 
     public boolean validateToken(String token, UserDetails userDetails) {
