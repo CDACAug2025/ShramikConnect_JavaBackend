@@ -31,45 +31,47 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
+        final String authHeader = request.getHeader("Authorization");
+        final String jwt;
+        final String userEmail;
 
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-
-            String token = authHeader.substring(7);
-            String username = jwtUtils.extractUsername(token);
-
-            if (username != null &&
-                SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                UserDetails userDetails =
-                        userDetailsService.loadUserByUsername(username);
-
-                if (jwtUtils.validateToken(token, userDetails)) {
-
-                    String role = jwtUtils.extractRole(token); // ORGANIZATION
-
-                    UsernamePasswordAuthenticationToken authToken =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    List.of(
-                                            new SimpleGrantedAuthority(
-                                                    "ROLE_" + role // ✅ PREFIX HERE
-                                            )
-                                    )
-                            );
-
-                    authToken.setDetails(
-                            new WebAuthenticationDetailsSource()
-                                    .buildDetails(request)
-                    );
-
-                    SecurityContextHolder.getContext()
-                            .setAuthentication(authToken);
-                }
-            }
+        // 1. Check if header exists and starts with Bearer
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            filterChain.doFilter(request, response);
+            return;
         }
 
+        jwt = authHeader.substring(7);
+        userEmail = jwtUtils.extractUsername(jwt);
+
+        // 2. If email exists and user is not already authenticated in this session
+        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+            // 3. Validate token
+            if (jwtUtils.validateToken(jwt, userDetails)) {
+                String role = jwtUtils.extractRole(jwt); // Returns "ADMIN"
+                
+                // 4. Create Authority with ROLE_ prefix for Spring Security compatibility
+                String authority = role.startsWith("ROLE_") ? role : "ROLE_" + role;
+                
+                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userDetails,
+                        null,
+                        List.of(new SimpleGrantedAuthority(authority))
+                );
+
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+                // 5. Update Security Context
+                SecurityContextHolder.getContext().setAuthentication(authToken);
+                
+                // Debug log to confirm success in terminal
+                System.out.println("✅ Security Context Set for: " + userEmail + " | Role: " + authority);
+            }
+        }
+        
+        // 6. Continue the filter chain
         filterChain.doFilter(request, response);
     }
 }

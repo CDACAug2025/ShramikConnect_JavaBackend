@@ -22,106 +22,95 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import com.shramikconnect.security.JwtAuthenticationFilter;
-
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final UserDetailsService userDetailsService;
+	private final JwtAuthenticationFilter jwtAuthenticationFilter;
+	private final UserDetailsService userDetailsService;
 
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(csrf -> csrf.disable())
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable())
-            .authorizeHttpRequests(auth -> auth
-                // 🌐 1. Public Endpoints
-                .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/api/payments/**").permitAll() 
+	@Bean
+	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+		http
+				// 🛡️ 1. Global Security Defaults
+				.csrf(csrf -> csrf.disable()).cors(cors -> cors.configurationSource(corsConfigurationSource()))
+				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
 
-                // 🛡️ 2. Shared Multi-Role Endpoints
-                // Allow both ADMIN and ORGANIZATION to verify Razorpay payments
-                .requestMatchers("/api/organization/payments/verify-and-update/**").hasAnyRole("ORGANIZATION", "ADMIN")
+				// 🔓 2. Request Authorization Logic
+				.authorizeHttpRequests(auth -> auth
+						// Public Paths
+						.requestMatchers("/api/auth/**", "/images/**", "/api/payments/**").permitAll()
+						.requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // 🏢 3. Role-Specific Endpoints
-                
-                // 👷 WORKER Role (Updated to include payment history)
-                .requestMatchers(
-                    "/api/worker/**", 
-                    "/api/jobs/feed/**", 
-                    "/api/applications/apply/**",
-                    "/api/worker/payments/**" 
-                ).hasRole("WORKER")
+						// 👮 1. SPECIFIC ADMIN RULES (Must be first)
+						// Allow Admin to access the shared worker order path for all-order visibility
+						.requestMatchers(HttpMethod.GET, "/api/worker/orders/admin/all").hasRole("ADMIN")
+						.requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                // 🏢 ORGANIZATION Role
-                .requestMatchers("/api/organization/**").hasRole("ORGANIZATION")
-                .requestMatchers("/api/client/**").hasRole("CLIENT")
-              
+						// 👷 2. ROLE SPECIFIC ACCESS (Worker & Products)
+						// Shared Product access
+						.requestMatchers("/api/worker/products/**").hasAnyRole("WORKER", "ADMIN")
 
-                
-                // 👮 ADMIN Role
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                
-                // 👮 SUPERVISOR Role
-                .requestMatchers("/api/supervisor/**").hasRole("SUPERVISOR")
-                
-                .requestMatchers("/api/notifications/**").authenticated()
-                .requestMatchers("/api/contracts/**").authenticated()
+						// Specific Worker Order actions
+						.requestMatchers("/api/worker/orders/create").hasRole("WORKER")
+						.requestMatchers("/api/worker/orders/verify").hasRole("WORKER")
+						.requestMatchers(HttpMethod.GET, "/api/worker/orders/my-orders").hasRole("WORKER")
 
-                
-             // Inside your SecurityConfig filter chain
-                .requestMatchers("/api/notifications/**").hasAnyRole("WORKER", "CLIENT", "ORGANIZATION", "ADMIN")
+						// 🚧 3. BROAD CATCH-ALLS (Must be after specific sub-paths)
+						.requestMatchers("/api/worker/**", "/api/jobs/feed/**").hasRole("WORKER")
+						.requestMatchers("/api/organization/**").hasRole("ORGANIZATION")
+						.requestMatchers("/api/supervisor/**").hasRole("SUPERVISOR")
 
-                // 🔑 4. Shared Authenticated (Login required, role doesn't matter)
-                .requestMatchers("/api/jobs/**", "/api/applications/**", "/api/contracts/**", "/api/chat/**").authenticated()
 
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+						// 🔔 Shared Authenticated Paths
+						.requestMatchers("/api/notifications/**")
+						.hasAnyRole("ADMIN", "WORKER", "ORGANIZATION", "SUPERVISOR")
+						.requestMatchers("/api/jobs/**", "/api/applications/**", "/api/contracts/**", "/api/chat/**")
+						.authenticated()
 
-        return http.build();
-    }
+						.anyRequest().authenticated())
 
-    @Bean
-    public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
-    }
+				// 🔑 3. Authentication Configuration
+				.authenticationProvider(authenticationProvider())
+				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-    @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
-    }
+		return http.build();
+	}
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        // Note: Using NoOp for development; use BCrypt for production
-        return NoOpPasswordEncoder.getInstance();
-    }
+	@Bean
+	public AuthenticationProvider authenticationProvider() {
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+		provider.setUserDetailsService(userDetailsService);
+		provider.setPasswordEncoder(passwordEncoder());
+		return provider;
+	}
 
-    @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-        config.setMaxAge(3600L);
-        config.setExposedHeaders(List.of("Authorization", "x-rtb-fingerprint-id"));
+	@Bean
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+		return config.getAuthenticationManager();
+	}
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
-    }
+	@Bean
+	public PasswordEncoder passwordEncoder() {
+		return NoOpPasswordEncoder.getInstance();
+	}
+
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration config = new CorsConfiguration();
+		config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:3000"));
+		config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
+		config.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin"));
+		config.setAllowCredentials(true);
+		config.setExposedHeaders(List.of("Authorization"));
+		config.setMaxAge(3600L);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", config);
+		return source;
+	}
 }

@@ -1,5 +1,10 @@
 package com.shramikconnect.modules.auth.service;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+
 import com.shramikconnect.common.enums.EmailVStatus;
 import com.shramikconnect.common.enums.KycStatus;
 import com.shramikconnect.common.enums.UserStatus;
@@ -13,17 +18,13 @@ import com.shramikconnect.modules.auth.dto.LoginRequest;
 import com.shramikconnect.modules.auth.dto.LoginResponse;
 import com.shramikconnect.modules.auth.dto.RegisterRequest;
 import com.shramikconnect.modules.auth.dto.RegisterResponse;
-import com.shramikconnect.modules.auth.dto.ResetPasswordRequest;
 import com.shramikconnect.modules.auth.repository.EmailVerificationTokenRepository;
 import com.shramikconnect.modules.auth.repository.PasswordResetTokenRepository;
 import com.shramikconnect.modules.user.repository.RoleRepository;
 import com.shramikconnect.modules.user.repository.UserRepository;
 import com.shramikconnect.security.JwtUtils;
-import lombok.RequiredArgsConstructor;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
-import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor

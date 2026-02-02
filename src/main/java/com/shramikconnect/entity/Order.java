@@ -1,24 +1,55 @@
 package com.shramikconnect.entity;
-import com.shramikconnect.common.enums.OrderStatus;
-import jakarta.persistence.*;
-import lombok.*;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "orders")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor 
 public class Order {
-    @Id @GeneratedValue
-    private Integer orderId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Integer orderId;
 
-    @ManyToOne
-    private User buyer;
+	private String razorpayOrderId; // ✅ Standardize this naming
+	private String razorpayPaymentId;
+	private String shippingAddress;
+	private String city;
+	private String zipCode;
+	
 
-    private Double totalAmount;
+	@ManyToOne(fetch = FetchType.EAGER)
+	@JoinColumn(name = "user_id")
+	private User worker;
 
+	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	@JsonManagedReference
+	private List<OrderItem> items;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status;
-
+	private Double totalAmount;
+	private String status;
+	private LocalDateTime createdAt;
 }
-
