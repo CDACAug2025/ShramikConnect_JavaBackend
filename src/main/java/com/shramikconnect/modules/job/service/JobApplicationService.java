@@ -24,71 +24,76 @@ import lombok.RequiredArgsConstructor;
 public class JobApplicationService {
 
     private final JobApplicationRepository jobApplicationRepository;
-    private final JobRepository jobRepository; // Matches your repo rename
+    private final JobRepository jobRepository;
     private final UserRepository userRepository;
 
-    // --- WORKER FEATURE: ONE-CLICK APPLY ---
+    // --- WORKER: APPLY FOR JOB ---
     public void applyForJob(Integer jobId, String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
+
+        User worker = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // ✅ FIXED: Changed from organizationJobRepository to jobRepository
         Job job = jobRepository.findById(jobId.longValue())
                 .orElseThrow(() -> new RuntimeException("Job not found"));
 
-        JobApplication application = new JobApplication();
-        application.setJobJobId(jobId); 
-        application.setApplicantUserId(user.getUserId());
-        // ✅ FIXED: Status set to APPLIED as per your enum
-        application.setStatus(ApplicationStatus.APPLIED); 
-        application.setAppliedAt(LocalDateTime.now());
+        JobApplication application = JobApplication.builder()
+                .job(job)
+                .worker(worker)
+                .status(ApplicationStatus.APPLIED)
+                .appliedAt(LocalDateTime.now())
+                .build();
 
         jobApplicationRepository.save(application);
-    }	
+    }
 
-    // --- WORKER FEATURE: TRACK MY APPLICATIONS ---
+    // --- WORKER: MY APPLICATIONS ---
     public List<JobApplicationResponse> getApplicationsByWorker(String email) {
-        User user = userRepository.findByEmail(email)
+
+        User worker = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        return jobApplicationRepository.findByApplicantUserId(user.getUserId())
+        return jobApplicationRepository.findByWorker(worker)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    // --- EXISTING CLIENT FEATURE ---
+    // --- CLIENT: APPLICATIONS FOR MY JOBS ---
     public List<JobApplicationResponse> getApplicationsByClient(String username) {
-        User user = userRepository.findByEmail(username)
+
+        User client = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // ✅ FIXED: Changed from organizationJobRepository to jobRepository
-        List<Job> jobs = jobRepository.findByPostedByUserId(user.getUserId());
-        List<Integer> jobIds = jobs.stream().map(Job::getJobId).toList();
+        List<Job> jobs = jobRepository.findByPostedByUserId(client.getUserId());
 
-        return jobApplicationRepository.findByJobJobIdIn(jobIds)
+        return jobApplicationRepository.findByJobIn(jobs)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
-    public void updateApplicationStatus(Integer applicationId, ApplicationStatus status, String username) {
+    public void updateApplicationStatus(
+            Integer applicationId,
+            ApplicationStatus status,
+            String username) {
+
         JobApplication application = jobApplicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
 
-        application.setStatus(status); // Status: SHORTLISTED / REJECTED
+        application.setStatus(status);
         jobApplicationRepository.save(application);
     }
 
     private JobApplicationResponse mapToResponse(JobApplication application) {
+
         JobApplicationResponse response = new JobApplicationResponse();
+
         response.setApplicationId(application.getApplicationId());
-        response.setJobId(application.getJobJobId());
-        response.setApplicantUserId(application.getApplicantUserId());
+        response.setJobId(application.getJob().getJobId());
+        response.setApplicantUserId(application.getWorker().getUserId());
         response.setStatus(application.getStatus());
         response.setAppliedAt(application.getAppliedAt());
+
         return response;
     }
-
 }
-

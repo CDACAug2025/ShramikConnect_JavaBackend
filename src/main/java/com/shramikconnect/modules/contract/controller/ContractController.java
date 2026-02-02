@@ -22,22 +22,20 @@ public class ContractController {
 
     private final ContractService contractService;
 
-    // ✅ ORGANIZATION creates contract
     @PostMapping
-    @PreAuthorize("hasRole('ORGANIZATION')")
+    @PreAuthorize("hasAnyRole('ORGANIZATION','CLIENT')")
     public ResponseEntity<ContractResponse> createContract(
             @RequestBody CreateContractRequest request,
             Authentication authentication
     ) {
-        String username = authentication.getName(); // email
+        String username = authentication.getName();
         return ResponseEntity.ok(
                 contractService.createContract(request, username)
         );
     }
 
-    // ✅ ORG / WORKER / CLIENT
     @GetMapping("/my")
-    @PreAuthorize("hasAnyRole('ORGANIZATION','WORKER','CLIENT')")
+    @PreAuthorize("hasAnyRole('ORGANIZATION','CLIENT','WORKER')")
     public ResponseEntity<List<ContractResponse>> getMyContracts(
             Authentication authentication
     ) {
@@ -45,18 +43,17 @@ public class ContractController {
                 contractService.getMyContracts(authentication.getName())
         );
     }
-    
+
     @PutMapping("/{contractId}/status")
-    @PreAuthorize("hasAnyRole('ORGANIZATION','WORKER')")
+    @PreAuthorize("hasAnyRole('ORGANIZATION','WORKER', 'CLIENT')")
     public ResponseEntity<ContractResponse> updateContractStatus(
             @PathVariable Integer contractId,
             @RequestParam ContractStatus status,
             Authentication authentication
     ) {
-        String username = authentication.getName();
         return ResponseEntity.ok(
-                contractService.updateStatus(contractId, status, username)
+                contractService.updateStatus(contractId, status, authentication.getName())
         );
     }
-
 }
+

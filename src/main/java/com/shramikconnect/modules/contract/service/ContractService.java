@@ -31,23 +31,47 @@ public class ContractService {
     private final UserRepository userRepository;
     private final ChatRoomRepository chatRoomRepository;
 
-    // ✅ FIX: username → client lookup
+    // ───────────────── CREATE CONTRACT ─────────────────
     public ContractResponse createContract(
             CreateContractRequest request,
             String username
     ) {
-        User organization = userRepository.findByEmail(username)
+        // ✅ Validate request FIRST
+        if (request.getJobId() == null) {
+            throw new IllegalArgumentException("jobId is required");
+        }
+        if (request.getWorkerId() == null) {
+            throw new IllegalArgumentException("workerId is required");
+        }
+        if (request.getAgreedAmount() == null) {
+            throw new IllegalArgumentException("agreedAmount is required");
+        }
+
+        // ✅ Organization
+        User org = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("Organization not found"));
 
+        // ✅ Job (Job ID is Long in entity → convert safely)
         Job job = jobRepository.findById(request.getJobId().longValue())
                 .orElseThrow(() -> new RuntimeException("Job not found"));
 
+        // ✅ Worker (User ID is Integer → DO NOT convert to Long)
         User worker = userRepository.findById(request.getWorkerId())
                 .orElseThrow(() -> new RuntimeException("Worker not found"));
 
+        // ❌ Prevent duplicate contract
+        contractRepository
+                .findByJob_JobIdAndWorker_UserId(
+                        job.getJobId(),           // Integer
+                        worker.getUserId()        // Integer
+                )
+                .ifPresent(c -> {
+                    throw new RuntimeException("Contract already exists");
+                });
+
         Contract contract = Contract.builder()
                 .job(job)
-                .client(organization)
+                .client(org)
                 .worker(worker)
                 .agreedAmount(request.getAgreedAmount())
                 .status(ContractStatus.NEGOTIATION)
@@ -55,44 +79,43 @@ public class ContractService {
 
         Contract saved = contractRepository.save(contract);
 
-        // ✅ Auto chat room
+        // ✅ Auto-create chat room
         chatRoomRepository.save(
                 ChatRoom.builder()
                         .contract(saved)
                         .build()
         );
 
-        return mapToResponse(saved);
+        return map(saved);
     }
 
-    
 
-    public List<ContractResponse> getMyContracts(String username) {
-        User user = userRepository.findByEmail(username)
+    // ───────────────── MY CONTRACTS ─────────────────
+    public List<ContractResponse> getMyContracts(String email) {
+
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        String role = user.getRole().getRoleName();
 
         List<Contract> contracts;
 
-        if (user.getRole().getRoleName().equals("ORGANIZATION")) {
+        if (role.equals("ORGANIZATION") || role.equals("CLIENT")) {
             contracts = contractRepository.findByClient_UserId(user.getUserId());
         } else {
             contracts = contractRepository.findByWorker_UserId(user.getUserId());
         }
 
-        return contracts.stream()
-                .map(this::mapToResponse)
-                .toList();
+        return contracts.stream().map(this::map).toList();
     }
 
-
-    
-    
+    // ───────────────── UPDATE STATUS ─────────────────
     public ContractResponse updateStatus(
             Integer contractId,
             ContractStatus newStatus,
-            String username
+            String email
     ) {
-        User user = userRepository.findByEmail(username)
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Contract contract = contractRepository.findById(contractId)
@@ -105,46 +128,43 @@ public class ContractService {
             throw new AccessDeniedException("Unauthorized");
         }
 
+        // ✅ WORKER SIGNS → CONTRACT BECOMES ACTIVE
         if (contract.getStatus() == ContractStatus.NEGOTIATION
-                && newStatus == ContractStatus.SIGNED) {
+                && newStatus == ContractStatus.SIGNED
+                && isWorker) {
 
-            contract.setStatus(ContractStatus.SIGNED);
             contract.setSignedAt(LocalDateTime.now());
-        }
-
-        else if (contract.getStatus() == ContractStatus.SIGNED
-                && newStatus == ContractStatus.ACTIVE
-                && isOrg) {
-
-            contract.setStatus(ContractStatus.ACTIVE);
             contract.setStartDate(LocalDate.now());
+            contract.setStatus(ContractStatus.ACTIVE);
         }
 
+        // ✅ WORKER COMPLETES JOB
         else if (contract.getStatus() == ContractStatus.ACTIVE
-                && newStatus == ContractStatus.COMPLETED) {
+                && newStatus == ContractStatus.COMPLETED
+                && isWorker) {
 
             contract.setStatus(ContractStatus.COMPLETED);
+            contract.setEndDate(LocalDate.now());
         }
 
         else {
             throw new RuntimeException("Invalid status transition");
         }
 
-        return mapToResponse(contractRepository.save(contract));
+        return map(contractRepository.save(contract));
     }
 
 
-
-    private ContractResponse mapToResponse(Contract contract) {
+    private ContractResponse map(Contract c) {
         return ContractResponse.builder()
-                .contractId(contract.getContractId())
-                .jobTitle(contract.getJob().getTitle())
-                .workerName(contract.getWorker().getFullName())
-                .agreedAmount(contract.getAgreedAmount())
-                .status(contract.getStatus())
-                .endDate(contract.getEndDate())
-                .contractTerms(contract.getContractTerms())
+                .contractId(c.getContractId())
+                .jobTitle(c.getJob().getTitle())
+                .workerName(c.getWorker().getFullName())
+                .agreedAmount(c.getAgreedAmount())
+                .status(c.getStatus())
+                .startDate(c.getStartDate())
+                .endDate(c.getEndDate())
                 .build();
     }
-
 }
+

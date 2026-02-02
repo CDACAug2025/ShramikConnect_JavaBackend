@@ -24,8 +24,7 @@ public class OrganizationJobApplicationService {
     private final ClientJobRepository clientJobRepository;
     private final UserRepository userRepository;
 
-    public List<OrganizationJobApplicationResponse> getApplicationsForOrganization(
-            String username) {
+    public List<OrganizationJobApplicationResponse> getApplicationsForOrganization(String username) {
 
         User organization = userRepository.findByEmail(username)
                 .orElseThrow(() -> new RuntimeException("Organization not found"));
@@ -33,12 +32,8 @@ public class OrganizationJobApplicationService {
         List<Job> jobs =
                 clientJobRepository.findByPostedByUserId(organization.getUserId());
 
-        List<Integer> jobIds = jobs.stream()
-                .map(Job::getJobId)
-                .toList();
-
         List<JobApplication> applications =
-                organizationJobApplicationRepository.findByJobJobIdIn(jobIds);
+                organizationJobApplicationRepository.findByJobIn(jobs);
 
         return applications.stream()
                 .map(this::mapToResponse)
@@ -57,8 +52,7 @@ public class OrganizationJobApplicationService {
                 organizationJobApplicationRepository.findById(applicationId)
                         .orElseThrow(() -> new RuntimeException("Application not found"));
 
-        Job job = clientJobRepository.findById(application.getJobJobId())
-                .orElseThrow(() -> new RuntimeException("Job not found"));
+        Job job = application.getJob();
 
         if (!job.getPostedByUserId().equals(organization.getUserId())) {
             throw new RuntimeException("Unauthorized access");
@@ -68,19 +62,13 @@ public class OrganizationJobApplicationService {
         organizationJobApplicationRepository.save(application);
     }
 
-    private OrganizationJobApplicationResponse mapToResponse(
-            JobApplication application) {
+    private OrganizationJobApplicationResponse mapToResponse(JobApplication application) {
+
+        Job job = application.getJob();
+        User worker = application.getWorker();
 
         OrganizationJobApplicationResponse response =
                 new OrganizationJobApplicationResponse();
-
-        // 🔍 Fetch Job
-        Job job = clientJobRepository.findById(application.getJobJobId())
-                .orElseThrow(() -> new RuntimeException("Job not found"));
-
-        // 🔍 Fetch Worker
-        User worker = userRepository.findById(application.getApplicantUserId())
-                .orElseThrow(() -> new RuntimeException("Worker not found"));
 
         response.setApplicationId(application.getApplicationId());
 
@@ -99,6 +87,4 @@ public class OrganizationJobApplicationService {
 
         return response;
     }
-
-
 }

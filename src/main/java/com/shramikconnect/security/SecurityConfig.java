@@ -63,6 +63,9 @@ public class SecurityConfig {
 
                 // 🏢 ORGANIZATION Role
                 .requestMatchers("/api/organization/**").hasRole("ORGANIZATION")
+                .requestMatchers("/api/client/**").hasRole("CLIENT")
+              
+
                 
                 // 👮 ADMIN Role
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -71,6 +74,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/supervisor/**").hasRole("SUPERVISOR")
                 
                 .requestMatchers("/api/notifications/**").authenticated()
+                .requestMatchers("/api/contracts/**").authenticated()
+
                 
              // Inside your SecurityConfig filter chain
                 .requestMatchers("/api/notifications/**").hasAnyRole("WORKER", "CLIENT", "ORGANIZATION", "ADMIN")

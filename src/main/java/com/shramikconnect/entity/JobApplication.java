@@ -14,11 +14,13 @@ public class JobApplication {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer applicationId;
 
-    @Column(name = "applicant_user_id")
-    private Integer applicantUserId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "job_job_id")
+    private Job job;
 
-    @Column(name = "job_job_id")
-    private Integer jobJobId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "applicant_user_id")
+    private User worker;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

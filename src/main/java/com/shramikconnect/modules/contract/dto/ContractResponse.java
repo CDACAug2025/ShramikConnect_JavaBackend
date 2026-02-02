@@ -18,8 +18,9 @@ public class ContractResponse {
     private String jobTitle;
     private String workerName;
     private Double agreedAmount;
-    private LocalDate endDate;
     private ContractStatus status;
-    private String contractTerms;
+    private LocalDate startDate;
+    private LocalDate endDate;
 }
+
 

@@ -1,6 +1,8 @@
 package com.shramikconnect.modules.job.repository;
 
+import com.shramikconnect.entity.Job;
 import com.shramikconnect.entity.JobApplication;
+import com.shramikconnect.entity.User;
 import com.shramikconnect.common.enums.ApplicationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,25 +14,55 @@ import java.util.List;
 @Repository
 public interface JobApplicationRepository extends JpaRepository<JobApplication, Integer> {
 
-    List<JobApplication> findByJobJobIdIn(List<Integer> jobIds);
+    // ✅ Organization → Applications for my jobs
+    @Query("""
+        SELECT ja
+        FROM JobApplication ja
+        WHERE ja.job.postedByUserId = :orgId
+    """)
+    List<JobApplication> findByOrganizationJobs(
+            @Param("orgId") Integer orgId
+    );
+
+    // ✅ FIXED: Applications applied by a worker
+    // ❌ OLD: ja.applicant.userId
+    // ✅ NEW: ja.worker.userId
+    @Query("""
+        SELECT ja
+        FROM JobApplication ja
+        WHERE ja.worker.userId = :userId
+    """)
+    List<JobApplication> findByWorkerUserId(
+            @Param("userId") Integer userId
+    );
     
-    // ✅ ADDED: Find all applications by a specific worker for status tracking
-    List<JobApplication> findByApplicantUserId(Integer applicantUserId);
+    @Query("""
+    	    SELECT ja
+    	    FROM JobApplication ja
+    	    JOIN FETCH ja.job j
+    	    WHERE j.postedByUserId = :clientId
+    	""")
+    	List<JobApplication> findClientApplicationsWithJob(
+    	        @Param("clientId") Integer clientId
+    	);
+
 
     long countByJobJobId(Integer jobId);
 
+    // ✅ Count applications for jobs posted by a client
     @Query("""
         SELECT COUNT(ja)
         FROM JobApplication ja
-        WHERE ja.jobJobId IN (
-            SELECT j.jobId
-            FROM Job j
-            WHERE j.postedByUserId = :userId
-        )
-        AND ja.status = :status
+        WHERE ja.job.postedByUserId = :userId
+          AND ja.status = :status
     """)
-    long countByClientJobsAndStatus(
+    long countByClientAndStatus(
             @Param("userId") Integer userId,
             @Param("status") ApplicationStatus status
     );
+
+    // ✅ Already correct
+    List<JobApplication> findByWorker(User worker);
+
+    List<JobApplication> findByJobIn(List<Job> jobs);
 }

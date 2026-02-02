@@ -52,7 +52,7 @@ public class ClientDashboardService {
         stats.setTotalSpent(totalSpent != null ? totalSpent : 0.0);
 
         stats.setPendingApplications(
-        		jobApplicationRepository.countByClientJobsAndStatus(
+        		jobApplicationRepository.countByClientAndStatus(
         		        user.getUserId(),
         		        ApplicationStatus.APPLIED
         		)

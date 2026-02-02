@@ -15,5 +15,9 @@ public interface ContractRepository extends JpaRepository<Contract, Integer> {
 
     List<Contract> findByWorker_UserId(Integer userId);
 
-    Optional<Contract> findByJob_JobIdAndWorker_UserId(Integer jobId, Integer workerId);
+    Optional<Contract> findByJob_JobIdAndWorker_UserId(
+            Integer jobId,
+            Integer workerId
+    );
 }
+
